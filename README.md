@@ -1,2 +1,0 @@
-# REDDY
-practice
