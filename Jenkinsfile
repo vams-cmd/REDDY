@@ -10,7 +10,7 @@ pipeline {
         
         stage('Checkout') {
             steps {
-            checkout([$class: 'GitSCM', branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'vamsi-git', url: 'https://github.com/vams-cmd/REDDY.git']]])
+            checkout([$class: 'GitSCM', branches: [[name: '*/main']], browser: [$class: 'GithubWeb', repoUrl: 'https://github.com/vams-cmd/REDDY.git'], extensions: [], userRemoteConfigs: [[credentialsId: 'vamsi-git', url: 'https://github.com/vams-cmd/REDDY.git']]])
             }
         }
         
