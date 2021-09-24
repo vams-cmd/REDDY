@@ -1,4 +1,2 @@
-<h1> Hello, Welcome to Simple DevOps Project !!   </h1>
-<h2> This is my first Declarative Pipeline job </h2>
-<h2> Hello Rishik </h2>
+<h1> Hello Siva Snacks thinnava </h1>
 
