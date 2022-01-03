@@ -1,59 +1,44 @@
 pipeline {
-    
-    agent any
-    
-    tools {
-        maven 'MAVEN_HOME'
+  agent any
+ 
+  tools {
+  maven 'Maven3'
+  }
+  stages {
+    stage ('Checkout') {
+      steps {
+      git branch: 'main', credentialsId: 'cd6f0f77-d845-4a9c-bc44-26b9c58b60d5', url: 'https://github.com/vams-cmd/REDDY.git'
+      }
+    }  
+    stage ('Build') {
+      steps {
+      sh 'mvn clean install -f webapp/pom.xml'
+      }
     }
-    
-    stages {
-        
-        stage('Checkout') {
-            steps {
-            checkout([$class: 'GitSCM', branches: [[name: '*/main']], browser: [$class: 'GithubWeb', repoUrl: 'https://github.com/vams-cmd/REDDY.git'], extensions: [], userRemoteConfigs: [[credentialsId: 'vamsi-git', url: 'https://github.com/vams-cmd/REDDY.git']]])
-            }
-        }
-        
-        stage('Build') {
-            steps {
-            sh 'mvn clean install -f webapp/pom.xml'
-            }
-        }
-        
-        stage('Code Quality') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                sh 'mvn sonar:sonar -f webapp/pom.xml'
-                }    
-            }
-        }
-        
-        stage('Nexus Upload') {
-            steps {
-                nexusArtifactUploader artifacts: [[artifactId: 'webapp', classifier: '', file: 'webapp/target/webapp.war', type: 'war']], credentialsId: 'bbca81fd-e29d-4636-84a0-d40c994b7257', groupId: 'com.example.maven-project', nexusUrl: '13.127.7.162:9000', nexusVersion: 'nexus3', protocol: 'http', repository: 'maven-snapshots', version: '1.0-SNAPSHOT'
-            }
-        }
-        
-        stage('Dev Deploy') {
-            steps {
-                deploy adapters: [tomcat8(credentialsId: 'deployer_user', path: '', url: 'http://192.168.70.132:8081')], contextPath: null, war: '**/*.war'
-            }
-        }
-        
-        stage('Dev Approval') {
-            steps {
-                echo "Taking approval from DEV Manager for QA Deployment"
-                timeout(time: 7, unit: 'DAYS') {
-                input message: 'Do you want to deploy into QA ?', submitter: 'admin'
-                }
-            }
-        }
-        
-        stage('QA Deploy') {
-            steps {
-                echo "deploying to QA Env "
-                deploy adapters: [tomcat8(credentialsId: 'deployer_user', path: '', url: 'http://192.168.70.132:8081')], contextPath: null, war: '**/*.war'
-            }
+    stage('Code Quality') {
+        steps {
+            withSonarQubeEnv('SonarQube') {
+            sh 'mvn sonar:sonar -f webapp/pom.xml'
+            }    
         }
     }
+    stage ('Dev Deployment') {
+      steps {
+      sshPublisher(publishers: [sshPublisherDesc(configName: 'Dockerhost', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'cd /home/dockeradmin; docker stop project_image_container; docker rm project_image_container; docker rmi project_image; docker build -t project_image .; docker run -d --name project_image_container -p 8080:8080 project_image; ', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '.', remoteDirectorySDF: false, removePrefix: 'webapp/target', sourceFiles: 'webapp/target/*.war')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+      }
+  post {
+      always {
+          emailext body: 'A Test EMail', recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']], subject: 'Test'
+        }
+      }
+    }
+    stage ('DEV Approve') {
+      steps {
+      echo "Taking approval from DEV Manager for QA Deployment"
+        timeout(time: 7, unit: 'DAYS') {
+        input message: 'Do you want to deploy?', submitter: 'admin'
+        }
+      }
+    }
+  }
 }
